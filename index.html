@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conway's Game of Life</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      cursor: crosshair;
+      display: block;
+    }
+    #btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      padding: 5px 14px;
+      border: 1px solid #aaa;
+      background: #f5f5f5;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    button:hover { background: #e0e0e0; }
+    button:active { background: #ccc; }
+  </style>
+</head>
+<body>
+  <canvas id="grid"></canvas>
+  <div id="btn-row">
+    <button id="startBtn">Start</button>
+    <button id="stepBtn">Step</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+
+  <script>
+    const MATRIX_LEN = 50;
+    const CELL_SIZE = 12;
+
+    const canvas = document.getElementById('grid');
+    const ctx = canvas.getContext('2d');
+    canvas.width  = MATRIX_LEN * CELL_SIZE;
+    canvas.height = MATRIX_LEN * CELL_SIZE;
+
+    let matrix = [];
+    let lastAliveStep = [];
+    let step = 0;
+    let running = false;
+    let intervalId = null;
+    let isMouseDown = false;
+    let fadeStepsLeft = 0;
+
+    function buildGrid() {
+      matrix = [];
+      lastAliveStep = [];
+      for (let r = 0; r < MATRIX_LEN; r++) {
+        matrix.push(new Array(MATRIX_LEN).fill(0));
+        lastAliveStep.push(new Array(MATRIX_LEN).fill(null));
+      }
+    }
+
+    function cellColor(r, c) {
+      if (matrix[r][c] === 1) return '#000000';
+      const last = lastAliveStep[r][c];
+      if (last === null) return '#ffffff';
+      const dt = step - last;
+      if (dt === 1) return '#ef4444';
+      if (dt === 2) return '#f97316';
+      if (dt === 3) return '#facc15';
+      return '#ffffff';
+    }
+
+    function draw() {
+      for (let r = 0; r < MATRIX_LEN; r++) {
+        for (let c = 0; c < MATRIX_LEN; c++) {
+          ctx.fillStyle = cellColor(r, c);
+          ctx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+          ctx.strokeStyle = '#d1d5db';
+          ctx.lineWidth = 0.3;
+          ctx.strokeRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
+      }
+    }
+
+    function syncLastAlive() {
+      for (let r = 0; r < MATRIX_LEN; r++)
+        for (let c = 0; c < MATRIX_LEN; c++)
+          if (matrix[r][c] === 1) lastAliveStep[r][c] = step;
+    }
+
+    function countLiveNeighbors(r, c) {
+      const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+      let count = 0;
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < MATRIX_LEN && nc >= 0 && nc < MATRIX_LEN)
+          count += matrix[nr][nc];
+      }
+      return count;
+    }
+
+    function updateClassic() {
+      const next = [];
+      for (let r = 0; r < MATRIX_LEN; r++) next.push(new Array(MATRIX_LEN).fill(0));
+      for (let r = 0; r < MATRIX_LEN; r++) {
+        for (let c = 0; c < MATRIX_LEN; c++) {
+          const n = countLiveNeighbors(r, c);
+          if (matrix[r][c] === 1)
+            next[r][c] = (n === 2 || n === 3) ? 1 : 0;
+          else
+            next[r][c] = (n === 3) ? 1 : 0;
+        }
+      }
+      matrix = next;
+    }
+
+    function anyAlive() {
+      for (let r = 0; r < MATRIX_LEN; r++)
+        for (let c = 0; c < MATRIX_LEN; c++)
+          if (matrix[r][c] === 1) return true;
+      return false;
+    }
+
+    function doStep() {
+      step++;
+      updateClassic();
+      syncLastAlive();
+      draw();
+    }
+
+    function runLoop() {
+      if (!running) return;
+      if (fadeStepsLeft > 0) {
+        step++;
+        draw();
+        fadeStepsLeft--;
+        if (fadeStepsLeft === 0) {
+          running = false;
+          document.getElementById('startBtn').textContent = 'Start';
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      } else {
+        doStep();
+        if (!anyAlive()) {
+          fadeStepsLeft = 3;
+        }
+      }
+    }
+
+    function toggleRun() {
+      running = !running;
+      const btn = document.getElementById('startBtn');
+      if (running) {
+        btn.textContent = 'Pause';
+        fadeStepsLeft = 0;
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(runLoop, 200);
+      } else {
+        btn.textContent = 'Start';
+        fadeStepsLeft = 0;
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+      }
+    }
+
+    function stepOnce() {
+      if (running) {
+        running = false;
+        document.getElementById('startBtn').textContent = 'Start';
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+      }
+      doStep();
+    }
+
+    function clearBoard() {
+      if (running) {
+        running = false;
+        document.getElementById('startBtn').textContent = 'Start';
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+      }
+      buildGrid();
+      step = 0;
+      fadeStepsLeft = 0;
+      draw();
+    }
+
+    function getCellFromEvent(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width  / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top)  * scaleY;
+      return {
+        r: Math.floor(y / CELL_SIZE),
+        c: Math.floor(x / CELL_SIZE)
+      };
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      isMouseDown = true;
+      const { r, c } = getCellFromEvent(e);
+      if (r >= 0 && r < MATRIX_LEN && c >= 0 && c < MATRIX_LEN) {
+        matrix[r][c] = 1 - matrix[r][c];
+        if (matrix[r][c] === 1) lastAliveStep[r][c] = step;
+        draw();
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (!isMouseDown) return;
+      const { r, c } = getCellFromEvent(e);
+      if (r >= 0 && r < MATRIX_LEN && c >= 0 && c < MATRIX_LEN) {
+        if (matrix[r][c] === 0) {
+          matrix[r][c] = 1;
+          lastAliveStep[r][c] = step;
+          draw();
+        }
+      }
+    });
+
+    canvas.addEventListener('mouseup',    () => isMouseDown = false);
+    canvas.addEventListener('mouseleave', () => isMouseDown = false);
+
+    document.getElementById('startBtn').addEventListener('click', toggleRun);
+    document.getElementById('stepBtn').addEventListener('click', stepOnce);
+    document.getElementById('clearBtn').addEventListener('click', clearBoard);
+
+    buildGrid();
+    draw();
+  </script>
+</body>
+</html>
