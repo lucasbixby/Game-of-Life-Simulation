@@ -13,4 +13,4 @@ In my representation of Conway's Game of Life Simulation, the normal rules apply
 is alive, it's colored black. If a cell died last step, the cell is colored red; If the cell died 2 steps ago, 
 the cell is colored orange; if it died three steps ago, the cell is colored yellow. Anything after that is uncolored
 
-Run the program through your terminal by going to the root directory and executing: python3 graphics.py 
+Run the program follow this link: https://<lucasbixby>.github.io/game-of-life 
