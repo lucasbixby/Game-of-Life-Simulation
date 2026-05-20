@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import time
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -225,8 +224,8 @@ if clear_btn:
     st.session_state.running = False
 
 # ── Draw grid ─────────────────────────────────────────────────────────────────
-svg_html = f'<div style="width:100%;overflow:auto">{render_svg()}</div>'
-components.html(svg_html, height=MATRIX_LEN * CELL_SIZE + 10, scrolling=False)
+grid_placeholder = st.empty()
+grid_placeholder.image(render_svg().encode(), use_container_width=True)
 
 # ── Step info ─────────────────────────────────────────────────────────────────
 alive_count = sum(
